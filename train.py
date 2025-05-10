@@ -16,7 +16,7 @@ print(f"Kullanilan Cihaz: {device}")
 # Parametreler
 BATCH_SIZE = 1
 LEARNING_RATE = 1e-4
-NUM_EPOCHS = 12
+NUM_EPOCHS = 13
 IMG_SIZE = (640, 640)
 
 # Veri yollari
@@ -31,7 +31,7 @@ transform = transforms.Compose([
 ])
 
 class CombinedLoss(nn.Module):
-    def __init__(self, weight_dice=0.5, weight_ce=0.5, smooth=1.0):
+    def __init__(self, weight_dice=0.35, weight_ce=0.65, smooth=1.0):
         super().__init__()
         self.weight_dice = weight_dice
         self.weight_ce = weight_ce
@@ -49,7 +49,7 @@ class CombinedLoss(nn.Module):
         return self.weight_dice * loss_dice + self.weight_ce * loss_ce
 
 class BDD100KDataset(Dataset):
-    def __init__(self, annotations_file, img_dir, transform=None, subset_size=2000, mode="train"):
+    def __init__(self, annotations_file, img_dir, transform=None, subset_size=6000, mode="train"):
         self.img_dir = img_dir
         self.transform = transform
         self.mode = mode
@@ -82,15 +82,15 @@ class BDD100KDataset(Dataset):
         return img, combined_mask.long()
 
 def get_data_loaders():
-    train_dataset = BDD100KDataset(TRAIN_ANNOTATIONS_FILE, TRAIN_IMG_DIR, transform, subset_size=4000, mode="train")
-    val_dataset = BDD100KDataset(VAL_ANNOTATIONS_FILE, VAL_IMG_DIR, transform, subset_size=1000, mode="val")
+    train_dataset = BDD100KDataset(TRAIN_ANNOTATIONS_FILE, TRAIN_IMG_DIR, transform, subset_size=6000, mode="train")
+    val_dataset = BDD100KDataset(VAL_ANNOTATIONS_FILE, VAL_IMG_DIR, transform, subset_size=1500, mode="val")
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
     return train_loader, val_loader
 
 def load_model():
     config = SegformerConfig.from_pretrained("nvidia/segformer-b0-finetuned-ade-512-512")
-    config.num_labels = 3  # Sınıf sayısını belirle (örneğin: 3)
+    config.num_labels = 3  # Sinif Sayisi belirlenir
 
     model = SegformerForSemanticSegmentation.from_pretrained(
         "nvidia/segformer-b0-finetuned-ade-512-512",
@@ -179,25 +179,25 @@ def train_model(model, train_loader, val_loader):
             optimizer.step()
             epoch_loss += loss.item()
             processed_images += images.size(0)
-            print(f"Epoch [{epoch+1}/{NUM_EPOCHS}], Batch [{batch_idx+1}/{len(train_loader)}], İşlenen: {processed_images}/{total_images*NUM_EPOCHS}")
+            print(f"Epoch [{epoch+1}/{NUM_EPOCHS}], Batch [{batch_idx+1}/{len(train_loader)}], Islenen: {processed_images}/{total_images*NUM_EPOCHS}")
 
         avg_loss = epoch_loss / len(train_loader)
-        print(f"\n🔥 Epoch [{epoch+1}/{NUM_EPOCHS}], Eğitim Kayıp: {avg_loss:.4f}")
+        print(f"\n Epoch [{epoch+1}/{NUM_EPOCHS}], Egitim Kayip: {avg_loss:.4f}")
         
         # Görselleştirme her epoch sonrası
         #visualize_predictions(model, val_loader)
 
         val_loss, accuracy, mean_iou, class_iou_avg = evaluate_model(model, val_loader, criterion)
-        print(f"✅ Epoch [{epoch+1}], Doğrulama Kayıp: {val_loss:.4f}, Genel Doğruluk: {accuracy:.4f}, IoU: {class_iou_avg}")
-        print(f"🚗 Drivable Alan IoU: {class_iou_avg[1]*100:.2f}%")
-        print(f"🛣️  Lane IoU: {class_iou_avg[2]*100:.2f}%\n")
+        print(f"Epoch [{epoch+1}], Dogrulama Kayip: {val_loss:.4f}, Genel Dogruluk: {accuracy:.4f}, IoU: {class_iou_avg}")
+        print(f"Drivable Alan IoU: {class_iou_avg[1]*100:.2f}%")
+        print(f"Lane IoU: {class_iou_avg[2]*100:.2f}%\n")
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), "best_segformer_model01.pth")
-            print("💾 En iyi model güncellendi ve kaydedildi!\n")
+            torch.save(model.state_dict(), "best_segformer_model02.pth")
+            print("En iyi model guncellendi ve kaydedildi\n")
 
-    print("✅ Eğitim tamamlandı!")
+    print("Egitim tamamlandi")
 
 
 
